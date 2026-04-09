@@ -6,7 +6,7 @@ if (!command || command === '--help' || command === '-h') {
   console.log(`Usage: claude-sessions <command>
 
 Commands:
-  close    Save all open Claude sessions and close their iTerm2 tabs
+  close    Save all open Claude sessions and stop them
   resume   Reopen all sessions from the last saved manifest
   status   Show what's currently in the manifest`);
   process.exit(0);

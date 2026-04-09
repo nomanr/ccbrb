@@ -1,49 +1,31 @@
-import { listTabPids, getTtyPid, sendCtrlC, closeTabByTty, isIterm2Running } from './iterm2.js';
-import { resolveSession } from './process.js';
+import { execSync } from 'node:child_process';
+import { getClaudeProcesses, getAncestorPids, resolveSession, getTtyOfProcess, parseExtraArgs } from './process.js';
 import { writeManifest } from './manifest.js';
 
-function findClaudeInTty(ttyProcesses) {
-  const lines = ttyProcesses.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.match(/\bclaude\b/) && !trimmed.includes('grep')) {
-      const parts = trimmed.split(/\s+/);
-      const pid = parseInt(parts[0], 10);
-      const command = parts.slice(1).join(' ');
-      return { pid, command };
-    }
-  }
-  return null;
-}
-
 export async function close() {
-  if (!isIterm2Running()) {
-    console.log('iTerm2 is not running.');
-    return;
-  }
+  const ancestors = getAncestorPids(process.pid);
+  const claudeProcesses = getClaudeProcesses()
+    .filter(p => !ancestors.has(p.pid));
 
-  const tabs = listTabPids();
-  if (tabs.length === 0) {
-    console.log('No iTerm2 tabs found.');
+  if (claudeProcesses.length === 0) {
+    console.log('No Claude sessions found.');
     return;
   }
 
   const sessions = [];
-  const tabsToClose = [];
+  const pidsToKill = [];
 
-  for (const tab of tabs) {
-    const ttyProcesses = getTtyPid(tab.tty);
-    const claudeProcess = findClaudeInTty(ttyProcesses);
-    if (!claudeProcess) continue;
-
-    const resolved = resolveSession(claudeProcess.pid, claudeProcess.command);
+  for (const proc of claudeProcesses) {
+    const resolved = resolveSession(proc.pid, proc.command);
     if (!resolved) {
-      console.warn(`Warning: Could not resolve session for PID ${claudeProcess.pid}, skipping.`);
+      console.warn(`Warning: Could not resolve session for PID ${proc.pid}, skipping.`);
       continue;
     }
 
+    resolved.tty = getTtyOfProcess(proc.pid);
+    resolved.args = parseExtraArgs(proc.command);
     sessions.push(resolved);
-    tabsToClose.push(tab.tty);
+    pidsToKill.push(proc.pid);
   }
 
   if (sessions.length === 0) {
@@ -54,15 +36,13 @@ export async function close() {
   writeManifest(sessions);
   console.log(`Saved ${sessions.length} session(s) to manifest.`);
 
-  for (const tty of tabsToClose) {
-    sendCtrlC(tty);
+  for (const pid of pidsToKill) {
+    try {
+      execSync(`kill -INT ${pid}`, { stdio: 'ignore' });
+    } catch {
+      // process may have already exited
+    }
   }
 
-  await new Promise(r => setTimeout(r, 2000));
-
-  for (const tty of tabsToClose) {
-    closeTabByTty(tty);
-  }
-
-  console.log(`Closed ${tabsToClose.length} tab(s).`);
+  console.log(`Closed ${pidsToKill.length} session(s).`);
 }

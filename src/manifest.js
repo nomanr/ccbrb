@@ -11,12 +11,17 @@ export function readManifest() {
   if (!fs.existsSync(manifestPath)) {
     return null;
   }
-  const raw = fs.readFileSync(manifestPath, 'utf-8');
-  return JSON.parse(raw);
+  try {
+    const raw = fs.readFileSync(manifestPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export function writeManifest(sessions) {
   const manifestPath = getManifestPath();
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   const manifest = {
     timestamp: new Date().toISOString(),
     sessions,
