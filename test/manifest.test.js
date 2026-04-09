@@ -10,7 +10,7 @@ describe('manifest', () => {
   let originalHome;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-sessions-test-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ccbrb-test-'));
     originalHome = process.env.HOME;
     process.env.HOME = tmpDir;
     fs.mkdirSync(path.join(tmpDir, '.claude'), { recursive: true });
