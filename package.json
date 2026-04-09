@@ -1,14 +1,32 @@
 {
   "name": "ccbrb",
   "version": "0.1.0",
-  "description": "Save and restore Claude Code sessions across terminal restarts",
+  "description": "Claude Code, be right back. Save and restore sessions across terminal restarts.",
   "type": "module",
   "bin": {
     "ccbrb": "./bin/ccbrb.js"
   },
+  "files": [
+    "bin",
+    "src",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/*.test.js"
   },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "sessions",
+    "terminal",
+    "cli",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nomanr/ccbrb"
+  },
+  "homepage": "https://github.com/nomanr/ccbrb",
   "engines": {
     "node": ">=18.0.0"
   },
