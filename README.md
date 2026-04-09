@@ -2,25 +2,19 @@
 
 Claude Code, be right back.
 
-Save all your running Claude Code sessions, close them, and bring them back later — across terminal restarts, reboots, whatever.
-
-## Install
-
-```bash
-npm install -g ccbrb
-```
+Save all your running Claude Code sessions, close them, and bring them back later. Across terminal restarts, reboots, whatever.
 
 ## Usage
 
-Run `ccbrb` for an interactive menu, or use commands directly:
+Run `npx ccbrb` for an interactive menu, or use commands directly:
 
 ```bash
-ccbrb brb      # save & close all Claude sessions
-ccbrb back     # reopen everything
-ccbrb status   # see what's saved
+npx ccbrb brb      # save & close all Claude sessions
+npx ccbrb back     # reopen everything
+npx ccbrb status   # see what's saved
 ```
 
-### `ccbrb brb`
+### `brb`
 
 Discovers all running Claude Code processes, reads their session IDs and working directories, saves everything to a manifest, then gracefully closes them.
 
@@ -31,7 +25,7 @@ Discovers all running Claude Code processes, reads their session IDs and working
 Closed 2 session(s). brb!
 ```
 
-### `ccbrb back`
+### `back`
 
 Reopens each saved session in a new terminal tab, resuming exactly where you left off.
 
@@ -44,9 +38,9 @@ Resuming 2 session(s)...
 Resumed 2 session(s). Welcome back!
 ```
 
-### `ccbrb status`
+### `status`
 
-Shows what's in the manifest — session titles, IDs, and project paths.
+Shows what's in the manifest -- session titles, IDs, and project paths.
 
 ```
 Saved at 2026-04-09T20:10:53.961Z
@@ -63,11 +57,11 @@ Sessions 2
 
 ## How it works
 
-1. **brb** — Uses `ps` to find Claude Code processes, reads their CWD via `lsof`, resolves session IDs from `~/.claude/projects/`, extracts session titles from JSONL logs, saves it all to `~/.claude/session-manifest.json`, then sends `SIGINT` to each process.
+1. **brb** -- Uses `ps` to find Claude Code processes, reads their CWD via `lsof`, resolves session IDs from `~/.claude/projects/`, extracts session titles from JSONL logs, saves it all to `~/.claude/session-manifest.json`, then sends `SIGINT` to each process.
 
-2. **back** — Reads the manifest and reopens each session via terminal-specific adapters (AppleScript for iTerm2/Terminal.app, CLI for tmux/kitty/WezTerm/etc). Falls back to direct TTY writes when possible.
+2. **back** -- Reads the manifest and reopens each session via terminal-specific adapters (AppleScript for iTerm2/Terminal.app, CLI for tmux/kitty/WezTerm/etc). Falls back to direct TTY writes when possible.
 
-3. **Session titles** — Pulled from Claude's `customTitle` field in session logs. If no title exists, falls back to the first user prompt in the conversation.
+3. **Session titles** -- Pulled from Claude's `customTitle` field in session logs. If no title exists, falls back to the first user prompt in the conversation.
 
 ## Terminal support
 
