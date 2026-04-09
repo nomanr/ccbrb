@@ -62,13 +62,28 @@ end tell`);
       osascript(`
 tell application "Terminal"
   activate
-  tell application "System Events" to keystroke "t" using command down
-  delay 0.3
-  do script "${escaped}" in front window
+  do script "${escaped}"
 end tell`);
     },
     writeToTty(tty, cmd) {
-      return writeTtyDirect(tty, cmd);
+      const escaped = cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      try {
+        const result = osascript(`
+tell application "Terminal"
+  repeat with w in windows
+    repeat with t in tabs of w
+      if tty of t is "${tty}" then
+        do script "${escaped}" in t
+        return "found"
+      end if
+    end repeat
+  end repeat
+  return "not_found"
+end tell`);
+        return result === 'found';
+      } catch {
+        return false;
+      }
     },
   },
 
@@ -151,9 +166,8 @@ function writeTtyDirect(tty, cmd) {
   }
 }
 
-function getAdapter() {
-  const terminal = detect();
-  return adapters[terminal] || null;
+function getAdapter(terminal) {
+  return adapters[terminal || detect()] || null;
 }
 
 export function openTab(cmd) {
@@ -165,8 +179,8 @@ export function openTab(cmd) {
   }
 }
 
-export function writeToTty(tty, cmd) {
-  const adapter = getAdapter();
+export function writeToTty(tty, cmd, terminal) {
+  const adapter = getAdapter(terminal);
   if (adapter) {
     return adapter.writeToTty(tty, cmd);
   }

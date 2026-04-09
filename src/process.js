@@ -72,7 +72,7 @@ export function getClaudeProcesses() {
       })
       .filter(p => {
         const cmd = p.command;
-        return /(?:^|\/)claude(?:\s|$)/.test(cmd) && !cmd.includes('claude-sessions');
+        return /(?:^|\/)claude(?:\s|$)/.test(cmd) && !cmd.includes('ccbrb');
       });
   } catch {
     return [];
@@ -118,6 +118,45 @@ export function getCwdOfProcess(pid) {
   } catch {
     return null;
   }
+}
+
+export function getSessionTitle(sessionId, cwd) {
+  if (!sessionId || !cwd) return null;
+
+  const projectDir = path.join(
+    os.homedir(),
+    '.claude',
+    'projects',
+    encodeCwdToProjectDir(cwd)
+  );
+  const jsonlPath = path.join(projectDir, `${sessionId}.jsonl`);
+
+  if (!fs.existsSync(jsonlPath)) return null;
+
+  try {
+    const content = fs.readFileSync(jsonlPath, 'utf-8');
+    let firstUserMessage = null;
+    for (const line of content.split('\n')) {
+      if (!line.trim()) continue;
+      const entry = JSON.parse(line);
+      if (entry.type === 'custom-title' && entry.customTitle) {
+        return entry.customTitle;
+      }
+      if (!firstUserMessage && entry.type === 'user' && entry.message?.content) {
+        const text = typeof entry.message.content === 'string'
+          ? entry.message.content
+          : entry.message.content.find(b => b.type === 'text')?.text;
+        if (text) firstUserMessage = text;
+      }
+    }
+    if (firstUserMessage) {
+      const trimmed = firstUserMessage.trim().split('\n')[0];
+      return trimmed.length > 80 ? trimmed.slice(0, 77) + '...' : trimmed;
+    }
+  } catch {
+    // corrupted or unreadable
+  }
+  return null;
 }
 
 export function resolveSession(pid, command) {
