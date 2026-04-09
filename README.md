@@ -4,38 +4,35 @@ Claude Code, be right back.
 
 Save your running Claude Code sessions, close them, and bring them all back later.
 
-## Usage
+## Quick start
 
 ```bash
 npx ccbrb
 ```
 
-Pick from the interactive menu, or run a command directly:
+This opens an interactive menu. Or use commands directly:
 
-```bash
-npx ccbrb brb      # save & close all sessions
-npx ccbrb back     # reopen saved sessions
-npx ccbrb status   # view saved sessions
-```
+| Command | What it does |
+|---|---|
+| `npx ccbrb brb` | Save and close all running sessions |
+| `npx ccbrb back` | Reopen all saved sessions |
+| `npx ccbrb status` | View saved sessions |
 
 ## How it works
 
-**brb** finds all running Claude Code processes, grabs their session IDs and working directories from `~/.claude/projects/`, saves everything to a manifest at `~/.claude/session-manifest.json`, and gracefully shuts them down.
+`brb` discovers all running Claude Code processes, resolves their session IDs and working directories, writes a manifest to `~/.claude/session-manifest.json`, and sends a graceful shutdown to each one.
 
-**back** reads the manifest and reopens each session in a new terminal tab using `claude --resume`.
+`back` reads the manifest and reopens each session in its own terminal tab via `claude --resume`.
 
-**status** prints what's saved -- project names, session titles, IDs, and paths.
-
-Session titles come from Claude's own session metadata. If a session has no title, the first prompt in the conversation is used instead.
+`status` shows what's saved, including session titles. Titles are pulled from Claude's session metadata, falling back to the first prompt if none exists.
 
 ## Supported terminals
 
-iTerm2, Terminal.app, tmux, kitty, WezTerm, GNOME Terminal, Konsole, Windows Terminal.
+iTerm2 , Terminal.app , tmux , kitty , WezTerm , GNOME Terminal , Konsole , Windows Terminal
 
 ## Requirements
 
-- Node.js >= 18
-- macOS or Linux
+Node.js >= 18 on macOS or Linux.
 
 ## License
 
