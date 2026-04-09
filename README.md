@@ -4,6 +4,8 @@ Claude Code, be right back.
 
 Save your running Claude Code sessions, close them, and bring them all back later.
 
+https://github.com/user-attachments/assets/af85e2d3-e27a-4a04-a4b7-280ab897b425
+
 ## Quick start
 
 ```bash
