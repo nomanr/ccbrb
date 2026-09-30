@@ -1,11 +1,31 @@
-import { execSync } from 'node:child_process';
 import path from 'node:path';
 import pc from 'picocolors';
 import { getClaudeProcesses, getAncestorPids, resolveSession, getTtyOfProcess, parseExtraArgs, getSessionTitle } from './process.js';
-import { writeManifest } from './manifest.js';
-import { terminalName } from './terminal.js';
+import { readManifest, writeManifest } from './manifest.js';
+import { terminalName, terminalLayout, windowDesktops } from './terminal.js';
 
-export async function brb() {
+function isAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function stop(pids) {
+  for (const pid of pids) {
+    try { process.kill(pid, 'SIGINT'); } catch {}
+  }
+  for (let i = 0; i < 20 && pids.some(isAlive); i++) {
+    await new Promise(r => setTimeout(r, 250));
+  }
+  for (const pid of pids.filter(isAlive)) {
+    try { process.kill(pid, 'SIGTERM'); } catch {}
+  }
+}
+
+export async function brb({ only } = {}) {
   const ancestors = getAncestorPids(process.pid);
   const claudeProcesses = getClaudeProcesses()
     .filter(p => !ancestors.has(p.pid));
@@ -15,21 +35,41 @@ export async function brb() {
     return;
   }
 
+  const terminal = only || terminalName();
+  const layout = terminalLayout(terminal);
+  const desktops = windowDesktops();
+  const previous = new Map((readManifest()?.sessions || []).map(s => [s.sessionId, s]));
+
   const sessions = [];
   const pidsToKill = [];
 
   for (const proc of claudeProcesses) {
+    const tty = getTtyOfProcess(proc.pid);
+    const place = tty ? layout.get(tty) : null;
+    if (only && !place) continue;
+
     const resolved = resolveSession(proc.pid, proc.command);
     if (!resolved) {
       console.warn(pc.yellow(`Warning: Could not resolve session for PID ${proc.pid}, skipping.`));
       continue;
     }
+    if (resolved.guessed) {
+      console.warn(pc.yellow(`Warning: PID ${proc.pid} has no session file, guessed ${resolved.sessionId}.`));
+    }
 
-    resolved.title = getSessionTitle(resolved.sessionId, resolved.cwd);
-    resolved.tty = getTtyOfProcess(proc.pid);
-    resolved.terminal = terminalName();
-    resolved.args = parseExtraArgs(proc.command);
-    sessions.push(resolved);
+    const before = place ? null : previous.get(resolved.sessionId);
+    sessions.push({
+      sessionId: resolved.sessionId,
+      cwd: resolved.cwd,
+      configDir: resolved.configDir,
+      title: getSessionTitle(resolved.sessionId, resolved.cwd, resolved.configDir),
+      tty,
+      terminal,
+      window: place?.windowId || before?.window || null,
+      tab: place?.tab ?? before?.tab ?? null,
+      desktop: place ? desktops.get(place.windowId) || null : before?.desktop || null,
+      args: parseExtraArgs(proc.command),
+    });
     pidsToKill.push(proc.pid);
   }
 
@@ -46,13 +86,7 @@ export async function brb() {
     console.log(pc.green(`  saved ${pc.bold(project)} ${pc.dim('·')} ${title}`));
   }
 
-  for (const pid of pidsToKill) {
-    try {
-      execSync(`kill -INT ${pid}`, { stdio: 'ignore' });
-    } catch {
-      // process may have already exited
-    }
-  }
+  await stop(pidsToKill);
 
   console.log(`\n${pc.green(`Closed ${pc.bold(pidsToKill.length)} session(s).`)} brb!`);
 }

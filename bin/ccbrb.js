@@ -3,17 +3,29 @@
 import { select, intro, isCancel } from '@clack/prompts';
 import pc from 'picocolors';
 
-const command = process.argv[2];
-const subcommand = process.argv[3];
+function flag(name) {
+  const i = process.argv.indexOf(name);
+  return i === -1 ? undefined : process.argv[i + 1];
+}
 
-if (command === '--help' || command === '-h') {
+const positional = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !['--terminal', '--only'].includes(all[i - 1]));
+const command = positional[0];
+const subcommand = positional[1];
+const terminal = flag('--terminal');
+const only = flag('--only');
+
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`Usage: ${pc.bold('ccbrb')} ${pc.dim('[command]')}
 
 Commands:
   ${pc.green('brb')}        Save all open Claude sessions and close them
   ${pc.cyan('back')}       Reopen all saved sessions
   ${pc.cyan('back one')}   Pick a session to reopen
-  ${pc.yellow('status')}     Show saved sessions`);
+  ${pc.yellow('status')}     Show saved sessions
+
+Options:
+  --only <terminal>      brb: save only sessions open in that terminal (iterm2)
+  --terminal <terminal>  back: reopen in that terminal (ghostty), same window and tab grouping`);
   process.exit(0);
 }
 
@@ -43,10 +55,10 @@ try {
 
   if (cmd === 'brb') {
     const { brb } = await import('../src/brb.js');
-    await brb();
+    await brb({ only });
   } else if (cmd === 'back') {
     const { back } = await import('../src/back.js');
-    await back();
+    await back({ terminal });
   } else if (cmd === 'back-one') {
     const { backOne } = await import('../src/back.js');
     await backOne();

@@ -33,6 +33,39 @@ export function isValidSessionId(id) {
   return typeof id === 'string' && SESSION_ID_RE.test(id);
 }
 
+export function defaultConfigDir() {
+  return path.join(os.homedir(), '.claude');
+}
+
+export function listConfigDirs(home = os.homedir()) {
+  const dirs = [path.join(home, '.claude')];
+  try {
+    for (const name of fs.readdirSync(home)) {
+      if (!name.startsWith('.claude-')) continue;
+      const full = path.join(home, name);
+      if (fs.existsSync(path.join(full, 'sessions'))) dirs.push(full);
+    }
+  } catch {
+    return dirs;
+  }
+  return dirs;
+}
+
+export function readSessionFile(pid, configDirs = listConfigDirs()) {
+  for (const configDir of configDirs) {
+    const file = path.join(configDir, 'sessions', `${pid}.json`);
+    if (!fs.existsSync(file)) continue;
+    try {
+      const data = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      if (!isValidSessionId(data.sessionId)) continue;
+      return { sessionId: data.sessionId, cwd: data.cwd || null, configDir, status: data.status || null };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export function encodeCwdToProjectDir(cwd) {
   return cwd.replace(/[/_]/g, '-');
 }
@@ -120,12 +153,11 @@ export function getCwdOfProcess(pid) {
   }
 }
 
-export function getSessionTitle(sessionId, cwd) {
+export function getSessionTitle(sessionId, cwd, configDir = defaultConfigDir()) {
   if (!sessionId || !cwd) return null;
 
   const projectDir = path.join(
-    os.homedir(),
-    '.claude',
+    configDir,
     'projects',
     encodeCwdToProjectDir(cwd)
   );
@@ -159,25 +191,35 @@ export function getSessionTitle(sessionId, cwd) {
   return null;
 }
 
-export function resolveSession(pid, command) {
-  const sessionId = parseSessionIdFromArgs(command);
-  const cwd = getCwdOfProcess(pid);
-
-  if (sessionId) {
+export function resolveSession(pid, command, configDirs = listConfigDirs()) {
+  const fromFile = readSessionFile(pid, configDirs);
+  if (fromFile) {
+    const cwd = fromFile.cwd || getCwdOfProcess(pid);
     if (!cwd) return null;
-    return { sessionId, cwd };
+    return { sessionId: fromFile.sessionId, cwd, configDir: fromFile.configDir, status: fromFile.status };
   }
 
+  const sessionId = parseSessionIdFromArgs(command);
+  const cwd = getCwdOfProcess(pid);
   if (!cwd) return null;
 
-  const projectDir = path.join(
-    os.homedir(),
-    '.claude',
-    'projects',
-    encodeCwdToProjectDir(cwd)
-  );
+  if (sessionId) {
+    return { sessionId, cwd, configDir: defaultConfigDir(), status: null };
+  }
+
+  const projectDir = path.join(defaultConfigDir(), 'projects', encodeCwdToProjectDir(cwd));
   const resolvedId = resolveSessionFromProjectDir(projectDir);
   if (!resolvedId) return null;
 
-  return { sessionId: resolvedId, cwd };
+  return { sessionId: resolvedId, cwd, configDir: defaultConfigDir(), status: null, guessed: true };
+}
+
+export function getRunningSessionIds(configDirs = listConfigDirs()) {
+  const ids = new Set();
+  for (const proc of getClaudeProcesses()) {
+    const fromFile = readSessionFile(proc.pid, configDirs);
+    const id = fromFile?.sessionId || parseSessionIdFromArgs(proc.command);
+    if (id) ids.add(id);
+  }
+  return ids;
 }
